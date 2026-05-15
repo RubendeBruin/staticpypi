@@ -33,14 +33,14 @@ def build_root_index(packages: list[str]) -> str:
         f'<a href="{escape(package)}/">{escape(package)}</a><br/>'
         for package in sorted(set(packages))
     )
-    return f"""<!DOCTYPE html>
+    return f'''<!DOCTYPE html>
 <html>
-  <head><meta charset='utf-8'><title>Simple index</title></head>
+  <head><meta charset="utf-8"><title>Simple index</title></head>
   <body>
 {links}
   </body>
 </html>
-"""
+'''
 
 
 def build_package_index(package: str, wheels: list[str]) -> str:
@@ -48,11 +48,11 @@ def build_package_index(package: str, wheels: list[str]) -> str:
         f'<a href="../../packages/{escape(wheel)}">{escape(wheel)}</a><br/>'
         for wheel in sorted(set(Path(w).name for w in wheels))
     )
-    return f"""<!DOCTYPE html>
+    return f'''<!DOCTYPE html>
 <html>
-  <head><meta charset='utf-8'><title>{escape(package)} wheels</title></head>
+  <head><meta charset="utf-8"><title>{escape(package)} wheels</title></head>
   <body>
 {links}
   </body>
 </html>
-"""
+'''

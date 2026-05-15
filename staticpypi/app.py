@@ -133,6 +133,8 @@ class MainWindow(QMainWindow):
         except (all_errors, OSError, ValueError) as exc:
             QMessageBox.critical(self, "Connection failed", str(exc))
             self.log(f"Connection failed: {exc}")
+        finally:
+            self.password_input.clear()
 
     def publish(self) -> None:
         cfg = self._read_settings()
@@ -168,3 +170,5 @@ class MainWindow(QMainWindow):
         except (all_errors, OSError, ValueError) as exc:
             QMessageBox.critical(self, "Publish failed", str(exc))
             self.log(f"Publish failed: {exc}")
+        finally:
+            self.password_input.clear()

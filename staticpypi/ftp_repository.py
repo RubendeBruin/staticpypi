@@ -6,11 +6,21 @@ from pathlib import Path
 
 
 class FTPRepository:
-    def __init__(self, host: str, username: str, password: str, remote_root: str) -> None:
+    DEFAULT_TIMEOUT_SECONDS = 30
+
+    def __init__(
+        self,
+        host: str,
+        username: str,
+        password: str,
+        remote_root: str,
+        timeout_seconds: int = DEFAULT_TIMEOUT_SECONDS,
+    ) -> None:
         self.host = host
         self.username = username
         self.password = password
         self.remote_root = remote_root or "/"
+        self.timeout_seconds = timeout_seconds
         self._ftp: FTP | None = None
 
     def __enter__(self) -> "FTPRepository":
@@ -21,7 +31,7 @@ class FTPRepository:
         self.close()
 
     def connect(self) -> None:
-        ftp = FTP(self.host, timeout=30)
+        ftp = FTP(self.host, timeout=self.timeout_seconds)
         ftp.login(self.username, self.password)
         self._ftp = ftp
         self._chdir(self.remote_root)
