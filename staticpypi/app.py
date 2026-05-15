@@ -168,7 +168,7 @@ class MainWindow(QMainWindow):
 
             QMessageBox.information(self, "Done", "Publish completed successfully.")
         except ValueError as exc:
-            message = f"Unsupported wheel filename found: {exc}"
+            message = str(exc)
             QMessageBox.critical(self, "Publish failed", message)
             self.log(f"Publish failed: {message}")
         except (all_errors, OSError) as exc:

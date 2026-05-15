@@ -73,8 +73,10 @@ class FTPRepository:
             for part in parts:
                 try:
                     ftp.mkd(part)
-                except error_perm:
-                    pass
+                except error_perm as exc:
+                    message = str(exc).lower()
+                    if "exist" not in message and "already" not in message:
+                        raise
                 ftp.cwd(part)
         finally:
             ftp.cwd(current)
