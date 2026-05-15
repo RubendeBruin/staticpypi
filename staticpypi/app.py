@@ -3,6 +3,8 @@ from __future__ import annotations
 from ftplib import all_errors
 from pathlib import Path
 
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QDragEnterEvent, QDropEvent
 from PySide6.QtWidgets import (
     QFileDialog,
     QFormLayout,
@@ -25,6 +27,58 @@ from staticpypi.index_builder import (
     group_wheels_by_package,
 )
 from staticpypi.settings import AppSettings, ConnectionSettings
+
+
+class DragDropListWidget(QListWidget):
+    """Custom QListWidget that accepts drag and drop for wheel files."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setAcceptDrops(True)
+        self.on_drop_callback = None
+
+    def dragEnterEvent(self, event: QDragEnterEvent) -> None:
+        if event.mimeData().hasUrls():
+            # Check if any of the URLs are .whl files
+            urls = event.mimeData().urls()
+            has_wheel_files = any(
+                Path(url.toLocalFile()).suffix.lower() == ".whl" for url in urls
+            )
+            if has_wheel_files:
+                event.setDropAction(Qt.DropAction.CopyAction)
+                event.accept()
+            else:
+                event.ignore()
+        else:
+            event.ignore()
+
+    def dragMoveEvent(self, event):
+        if event.mimeData().hasUrls():
+            urls = event.mimeData().urls()
+            has_wheel_files = any(
+                Path(url.toLocalFile()).suffix.lower() == ".whl" for url in urls
+            )
+            if has_wheel_files:
+                event.setDropAction(Qt.DropAction.CopyAction)
+                event.accept()
+            else:
+                event.ignore()
+        else:
+            event.ignore()
+
+    def dropEvent(self, event: QDropEvent) -> None:
+        if event.mimeData().hasUrls():
+            files = [Path(url.toLocalFile()) for url in event.mimeData().urls()]
+            # Filter for .whl files only
+            wheel_files = [f for f in files if f.suffix.lower() == ".whl"]
+            if wheel_files and self.on_drop_callback:
+                self.on_drop_callback(wheel_files)
+                event.setDropAction(Qt.DropAction.CopyAction)
+                event.accept()
+            else:
+                event.ignore()
+        else:
+            event.ignore()
 
 
 class MainWindow(QMainWindow):
@@ -62,7 +116,8 @@ class MainWindow(QMainWindow):
         files_header.addWidget(self.select_files_button)
         layout.addLayout(files_header)
 
-        self.selected_files_list = QListWidget()
+        self.selected_files_list = DragDropListWidget()
+        self.selected_files_list.on_drop_callback = self._add_wheel_files
         layout.addWidget(self.selected_files_list)
 
         actions = QHBoxLayout()
@@ -70,9 +125,12 @@ class MainWindow(QMainWindow):
         self.connect_button.clicked.connect(self.test_connection)
         self.publish_button = QPushButton("Publish")
         self.publish_button.clicked.connect(self.publish)
+        self.update_button = QPushButton("Update")
+        self.update_button.clicked.connect(self.update_indices)
 
         actions.addWidget(self.connect_button)
         actions.addWidget(self.publish_button)
+        actions.addWidget(self.update_button)
         layout.addLayout(actions)
 
         self.log_output = QTextEdit()
@@ -107,6 +165,13 @@ class MainWindow(QMainWindow):
     def log(self, message: str) -> None:
         self.log_output.append(message)
 
+    def _add_wheel_files(self, files: list[Path]) -> None:
+        """Add wheel files to the selected files list."""
+        self._wheel_paths.extend(files)
+        self.selected_files_list.clear()
+        self.selected_files_list.addItems([p.name for p in self._wheel_paths])
+        self.log(f"Added {len(files)} wheel file(s) (total: {len(self._wheel_paths)})")
+
     def select_wheels(self) -> None:
         files, _ = QFileDialog.getOpenFileNames(
             self,
@@ -116,10 +181,7 @@ class MainWindow(QMainWindow):
         )
         if not files:
             return
-        self._wheel_paths = [Path(p) for p in files]
-        self.selected_files_list.clear()
-        self.selected_files_list.addItems([p.name for p in self._wheel_paths])
-        self.log(f"Selected {len(self._wheel_paths)} wheel file(s)")
+        self._add_wheel_files([Path(p) for p in files])
 
     def test_connection(self) -> None:
         cfg = self._read_settings()
@@ -132,11 +194,9 @@ class MainWindow(QMainWindow):
             self.log(
                 f"Connected to {cfg.host}. Found {len(existing)} existing wheel file(s)."
             )
-        except (all_errors, OSError) as exc:
+        except Exception as exc:
             QMessageBox.critical(self, "Connection failed", str(exc))
             self.log(f"Connection failed: {exc}")
-        finally:
-            self.password_input.clear()
 
     def publish(self) -> None:
         cfg = self._read_settings()
@@ -160,12 +220,12 @@ class MainWindow(QMainWindow):
                 all_wheels = sorted(set(existing_wheels + [p.name for p in self._wheel_paths]))
                 grouped = group_wheels_by_package(all_wheels)
 
-                repo.upload_text(build_root_index(list(grouped.keys())), "simple/index.html")
-                self.log("Updated simple/index.html")
+                repo.upload_text(build_root_index(list(grouped.keys())), "index.html")
+                self.log("Updated index.html")
 
                 for package, wheels in grouped.items():
                     package_index = build_package_index(package, wheels)
-                    repo.upload_text(package_index, f"simple/{package}/index.html")
+                    repo.upload_text(package_index, f"{package}/index.html")
                 self.log(f"Updated {len(grouped)} package index file(s)")
 
             QMessageBox.information(self, "Done", "Publish completed successfully.")
@@ -173,8 +233,37 @@ class MainWindow(QMainWindow):
             message = str(exc)
             QMessageBox.critical(self, "Publish failed", message)
             self.log(f"Publish failed: {message}")
-        except (all_errors, OSError) as exc:
+        except Exception as exc:
             QMessageBox.critical(self, "Publish failed", str(exc))
             self.log(f"Publish failed: {exc}")
-        finally:
-            self.password_input.clear()
+
+    def update_indices(self) -> None:
+        """Update server indices without uploading new packages."""
+        cfg = self._read_settings()
+        if not cfg.host:
+            QMessageBox.warning(self, "Missing host", "Please provide an FTP host.")
+            return
+
+        try:
+            with FTPRepository(cfg.host, cfg.username, cfg.password, cfg.remote_root) as repo:
+                existing_wheels = repo.list_wheels("packages")
+                self.log(f"Found {len(existing_wheels)} wheel(s) on server.")
+
+                grouped = group_wheels_by_package(existing_wheels)
+
+                repo.upload_text(build_root_index(list(grouped.keys())), "index.html")
+                self.log("Updated index.html")
+
+                for package, wheels in grouped.items():
+                    package_index = build_package_index(package, wheels)
+                    repo.upload_text(package_index, f"{package}/index.html")
+                self.log(f"Updated {len(grouped)} package index file(s)")
+
+            QMessageBox.information(self, "Done", "Indices updated successfully.")
+        except ValueError as exc:
+            message = str(exc)
+            QMessageBox.critical(self, "Update failed", message)
+            self.log(f"Update failed: {message}")
+        except Exception as exc:
+            QMessageBox.critical(self, "Update failed", str(exc))
+            self.log(f"Update failed: {exc}")

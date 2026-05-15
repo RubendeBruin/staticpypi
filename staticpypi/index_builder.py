@@ -45,7 +45,7 @@ def build_root_index(packages: list[str]) -> str:
 
 def build_package_index(package: str, wheels: list[str]) -> str:
     links = "\n".join(
-        f'<a href="../../packages/{escape(wheel)}">{escape(wheel)}</a><br/>'
+        f'<a href="../packages/{escape(wheel)}">{escape(wheel)}</a><br/>'
         for wheel in sorted(set(Path(w).name for w in wheels))
     )
     return f'''<!DOCTYPE html>

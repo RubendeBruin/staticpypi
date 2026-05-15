@@ -97,17 +97,33 @@ class FTPRepository:
     def upload_file(self, local_path: Path, remote_path: str) -> None:
         ftp = self._require_connection()
         remote = remote_path.strip("/")
-        remote_dir = str(Path(remote).parent)
-        if remote_dir != ".":
-            self.ensure_dir(remote_dir)
-        with local_path.open("rb") as file_stream:
-            ftp.storbinary(f"STOR {remote}", file_stream)
+        # Use forward slashes for FTP paths (not Windows backslashes)
+        parts = remote.split("/")
+        filename = parts[-1]
+        remote_dir = "/".join(parts[:-1])
+        current = ftp.pwd()
+        try:
+            if remote_dir:
+                self.ensure_dir(remote_dir)
+                ftp.cwd(remote_dir)
+            with local_path.open("rb") as file_stream:
+                ftp.storbinary(f"STOR {filename}", file_stream)
+        finally:
+            ftp.cwd(current)
 
     def upload_text(self, content: str, remote_path: str) -> None:
         ftp = self._require_connection()
         remote = remote_path.strip("/")
-        remote_dir = str(Path(remote).parent)
-        if remote_dir != ".":
-            self.ensure_dir(remote_dir)
-        buffer = BytesIO(content.encode("utf-8"))
-        ftp.storbinary(f"STOR {remote}", buffer)
+        # Use forward slashes for FTP paths (not Windows backslashes)
+        parts = remote.split("/")
+        filename = parts[-1]
+        remote_dir = "/".join(parts[:-1])
+        current = ftp.pwd()
+        try:
+            if remote_dir:
+                self.ensure_dir(remote_dir)
+                ftp.cwd(remote_dir)
+            buffer = BytesIO(content.encode("utf-8"))
+            ftp.storbinary(f"STOR {filename}", buffer)
+        finally:
+            ftp.cwd(current)
