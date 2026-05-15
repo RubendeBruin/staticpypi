@@ -130,7 +130,7 @@ class MainWindow(QMainWindow):
             self.log(
                 f"Connected to {cfg.host}. Found {len(existing)} existing wheel file(s)."
             )
-        except (all_errors, OSError, ValueError) as exc:
+        except (all_errors, OSError) as exc:
             QMessageBox.critical(self, "Connection failed", str(exc))
             self.log(f"Connection failed: {exc}")
         finally:
@@ -167,7 +167,11 @@ class MainWindow(QMainWindow):
                 self.log(f"Updated {len(grouped)} package index file(s)")
 
             QMessageBox.information(self, "Done", "Publish completed successfully.")
-        except (all_errors, OSError, ValueError) as exc:
+        except ValueError as exc:
+            message = f"Unsupported wheel filename found: {exc}"
+            QMessageBox.critical(self, "Publish failed", message)
+            self.log(f"Publish failed: {message}")
+        except (all_errors, OSError) as exc:
             QMessageBox.critical(self, "Publish failed", str(exc))
             self.log(f"Publish failed: {exc}")
         finally:

@@ -3,6 +3,7 @@ from __future__ import annotations
 from ftplib import FTP, all_errors, error_perm
 from io import BytesIO
 from pathlib import Path
+from types import TracebackType
 
 
 class FTPRepository:
@@ -27,7 +28,12 @@ class FTPRepository:
         self.connect()
         return self
 
-    def __exit__(self, exc_type, exc, tb) -> None:  # noqa: ANN001
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
+    ) -> None:
         self.close()
 
     def connect(self) -> None:
