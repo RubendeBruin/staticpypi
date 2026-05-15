@@ -1,45 +1,79 @@
 # staticpypi
-maintain a pypi compatible index on a static server
+Maintain a PyPI-compatible index on a static server.
 
 ## Purpose
 
-The purpose is to enable deploying python .whl files on a static server such that they can be installed using tools like pip.
+`staticpypi` is a desktop application for publishing Python wheel files (`.whl`) to a static host over FTP, while maintaining a `simple` index that tools like `pip` can consume.
 
-The proposed setup is a desktop client that manages the contents of the server via ftp and updates it whenever publishing a new package.
+The application:
 
-The desktop application will 
+- connects to an FTP server using user-provided credentials
+- gathers existing wheel files from the server
+- adds wheel file(s) selected by the user
+- uploads the selected wheel files
+- creates/updates the required simple-index HTML files
 
-- connect with a FTP server using user-provided credentials and url
-- gather the existing whl files
-- add the whl file(s) to be added
-- upload the newly added whl files
-- create/update all other required files on the server
-
-
-
-the result is a directory and file structure that can be served over http(s).
-
-
-
-In a typical configuration, access to the repository over https in protected using .htaccess
-
-
+The result is a static directory/file structure that can be served over HTTP(S).
 
 ## Framework
 
-Use python
+- Python
+- PySide6 for the desktop UI
+- `QSettings` (PySide6 settings module) for storing host, username, password, and remote root
 
-Use PySide6 for the ui
+## Current implementation
 
-use the settings module from pyside6 for storing url, username etc.
+The app provides:
 
+- FTP host/username/password/remote-root configuration
+- persistent settings storage through `QSettings`
+- wheel file selection (`*.whl`)
+- test connection action
+- publish action that:
+  - uploads wheel files to `packages/`
+  - rebuilds and uploads:
+    - `simple/index.html`
+    - `simple/<normalized-package-name>/index.html`
 
+Package names in the simple index are normalized per PEP 503 style (`[-_.]+` collapsed to `-`, lowercase).
+
+## Installation
+
+```bash
+python -m pip install -e .
+```
+
+## Run
+
+```bash
+staticpypi
+```
+
+or:
+
+```bash
+python -m staticpypi.main
+```
+
+## Expected server layout
+
+After publishing, your FTP root (or configured remote root) contains:
+
+```text
+packages/
+  your_package-1.2.3-py3-none-any.whl
+simple/
+  index.html
+  your-package/
+    index.html
+```
+
+Where:
+
+- `simple/index.html` links to package pages
+- `simple/<package>/index.html` links to wheel files in `packages/`
 
 ## References
 
-Look at existing the simplepypi pypi package. 
-
-Look at the PEP specification
-
-
-
+- [PyPA Simple Repository API](https://packaging.python.org/en/latest/specifications/simple-repository-api/)
+- [PEP 503 - Simple Repository API](https://peps.python.org/pep-0503/)
