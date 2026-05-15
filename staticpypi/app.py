@@ -120,6 +120,24 @@ class MainWindow(QMainWindow):
         self.selected_files_list.on_drop_callback = self._add_wheel_files
         layout.addWidget(self.selected_files_list)
 
+        server_header = QHBoxLayout()
+        server_header.addWidget(QLabel("Server packages"))
+        self.fetch_button = QPushButton("Fetch")
+        self.fetch_button.clicked.connect(self.fetch_server_wheels)
+        server_header.addWidget(self.fetch_button)
+        layout.addLayout(server_header)
+
+        self.server_wheels_list = QListWidget()
+        self.server_wheels_list.setSelectionMode(QListWidget.SelectionMode.MultiSelection)
+        layout.addWidget(self.server_wheels_list)
+
+        remove_layout = QHBoxLayout()
+        remove_layout.addStretch()
+        self.remove_button = QPushButton("Remove selected")
+        self.remove_button.clicked.connect(self.remove_selected_wheels)
+        remove_layout.addWidget(self.remove_button)
+        layout.addLayout(remove_layout)
+
         actions = QHBoxLayout()
         self.connect_button = QPushButton("Test connection")
         self.connect_button.clicked.connect(self.test_connection)
@@ -267,3 +285,59 @@ class MainWindow(QMainWindow):
         except Exception as exc:
             QMessageBox.critical(self, "Update failed", str(exc))
             self.log(f"Update failed: {exc}")
+
+    def fetch_server_wheels(self) -> None:
+        cfg = self._read_settings()
+        if not cfg.host:
+            QMessageBox.warning(self, "Missing host", "Please provide an FTP host.")
+            return
+        try:
+            with FTPRepository(cfg.host, cfg.username, cfg.password, cfg.remote_root) as repo:
+                wheels = repo.list_wheels("packages")
+            self.server_wheels_list.clear()
+            self.server_wheels_list.addItems(wheels)
+            self.log(f"Fetched {len(wheels)} wheel(s) from server.")
+        except Exception as exc:
+            QMessageBox.critical(self, "Fetch failed", str(exc))
+            self.log(f"Fetch failed: {exc}")
+
+    def remove_selected_wheels(self) -> None:
+        selected = [item.text() for item in self.server_wheels_list.selectedItems()]
+        if not selected:
+            QMessageBox.warning(self, "No selection", "Please select wheel(s) to remove.")
+            return
+
+        names = "\n".join(selected)
+        reply = QMessageBox.question(
+            self,
+            "Confirm removal",
+            f"Remove {len(selected)} wheel(s) from the server?\n\n{names}",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+
+        cfg = self._read_settings()
+        try:
+            with FTPRepository(cfg.host, cfg.username, cfg.password, cfg.remote_root) as repo:
+                for wheel in selected:
+                    repo.delete_file(f"packages/{wheel}")
+                    self.log(f"Deleted {wheel}")
+
+                remaining_wheels = repo.list_wheels("packages")
+                grouped = group_wheels_by_package(remaining_wheels) if remaining_wheels else {}
+
+                repo.upload_text(build_root_index(list(grouped.keys())), "index.html")
+                self.log("Updated index.html")
+
+                for package, wheels in grouped.items():
+                    package_index = build_package_index(package, wheels)
+                    repo.upload_text(package_index, f"{package}/index.html")
+                self.log(f"Updated {len(grouped)} package index file(s)")
+
+            self.server_wheels_list.clear()
+            self.server_wheels_list.addItems(remaining_wheels)
+            QMessageBox.information(self, "Done", f"Removed {len(selected)} wheel(s) and updated indices.")
+        except Exception as exc:
+            QMessageBox.critical(self, "Remove failed", str(exc))
+            self.log(f"Remove failed: {exc}")

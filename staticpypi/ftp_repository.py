@@ -94,6 +94,20 @@ class FTPRepository:
             ftp.cwd(current)
         return sorted(Path(n).name for n in names if str(n).endswith(".whl"))
 
+    def delete_file(self, remote_path: str) -> None:
+        ftp = self._require_connection()
+        remote = remote_path.strip("/")
+        parts = remote.split("/")
+        filename = parts[-1]
+        remote_dir = "/".join(parts[:-1])
+        current = ftp.pwd()
+        try:
+            if remote_dir:
+                ftp.cwd(remote_dir)
+            ftp.delete(filename)
+        finally:
+            ftp.cwd(current)
+
     def upload_file(self, local_path: Path, remote_path: str) -> None:
         ftp = self._require_connection()
         remote = remote_path.strip("/")
