@@ -89,9 +89,8 @@ class MainWindow(QMainWindow):
         self.remote_root_input.setText(cfg.remote_root)
 
     def _read_settings(self) -> ConnectionSettings:
-        remote_root = self.remote_root_input.text().strip() or "/"
-        if not remote_root.startswith("/"):
-            remote_root = f"/{remote_root}"
+        remote_root_input = self.remote_root_input.text().strip()
+        remote_root = f"/{remote_root_input.lstrip('/')}" if remote_root_input else "/"
 
         cfg = ConnectionSettings(
             host=self.host_input.text().strip(),

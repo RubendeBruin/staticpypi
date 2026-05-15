@@ -6,7 +6,7 @@ from pathlib import Path
 import re
 
 
-_WHEEL_RE = re.compile(r"^(?P<name>.+?)-(?P<version>[^-]+)(?:-[^-]+){3,}\.whl$")
+_WHEEL_RE = re.compile(r"^(?P<name>.+?)-(?P<version>[^-]+)(?:-[^-]+){3,4}\.whl$")
 
 
 def normalize_project_name(name: str) -> str:

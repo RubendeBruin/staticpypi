@@ -7,7 +7,7 @@ name = "staticpypi"
 version = "0.1.0"
 description = "Maintain a PyPI-compatible static index over FTP"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = [
   "PySide6>=6.6",
 ]
