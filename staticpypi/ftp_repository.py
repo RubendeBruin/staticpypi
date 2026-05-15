@@ -74,7 +74,8 @@ class FTPRepository:
                 try:
                     ftp.mkd(part)
                 except error_perm as exc:
-                    if not str(exc).startswith("550"):
+                    error_code = str(exc).split(maxsplit=1)[0]
+                    if error_code != "550":
                         raise
                 ftp.cwd(part)
         finally:
