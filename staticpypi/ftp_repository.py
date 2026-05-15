@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ftplib import FTP, error_perm
+from ftplib import FTP, all_errors, error_perm
 from io import BytesIO
 from pathlib import Path
 
@@ -31,7 +31,7 @@ class FTPRepository:
             return
         try:
             self._ftp.quit()
-        except Exception:
+        except all_errors:
             self._ftp.close()
         finally:
             self._ftp = None

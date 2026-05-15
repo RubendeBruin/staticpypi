@@ -1,14 +1,12 @@
 from __future__ import annotations
 
+from collections import defaultdict
 from html import escape
 from pathlib import Path
 import re
-from collections import defaultdict
 
 
-_WHEEL_RE = re.compile(
-    r"^(?P<name>.+?)-(?P<version>[^-]+)(?:-[^-]+){3,}\.whl$"
-)
+_WHEEL_RE = re.compile(r"^(?P<name>.+?)-(?P<version>[^-]+)(?:-[^-]+){3,}\.whl$")
 
 
 def normalize_project_name(name: str) -> str:
@@ -35,9 +33,9 @@ def build_root_index(packages: list[str]) -> str:
         f'<a href="{escape(package)}/">{escape(package)}</a><br/>'
         for package in sorted(set(packages))
     )
-    return f"""<!doctype html>
+    return f"""<!DOCTYPE html>
 <html>
-  <head><meta charset=\"utf-8\"><title>Simple index</title></head>
+  <head><meta charset='utf-8'><title>Simple index</title></head>
   <body>
 {links}
   </body>
@@ -50,9 +48,9 @@ def build_package_index(package: str, wheels: list[str]) -> str:
         f'<a href="../../packages/{escape(wheel)}">{escape(wheel)}</a><br/>'
         for wheel in sorted(set(Path(w).name for w in wheels))
     )
-    return f"""<!doctype html>
+    return f"""<!DOCTYPE html>
 <html>
-  <head><meta charset=\"utf-8\"><title>{escape(package)} wheels</title></head>
+  <head><meta charset='utf-8'><title>{escape(package)} wheels</title></head>
   <body>
 {links}
   </body>

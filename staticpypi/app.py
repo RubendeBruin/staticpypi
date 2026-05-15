@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from ftplib import all_errors
 from pathlib import Path
 
 from PySide6.QtWidgets import (
@@ -84,7 +85,7 @@ class MainWindow(QMainWindow):
         cfg = self._settings.load()
         self.host_input.setText(cfg.host)
         self.username_input.setText(cfg.username)
-        self.password_input.setText(cfg.password)
+        self.password_input.clear()
         self.remote_root_input.setText(cfg.remote_root)
 
     def _read_settings(self) -> ConnectionSettings:
@@ -129,7 +130,7 @@ class MainWindow(QMainWindow):
             self.log(
                 f"Connected to {cfg.host}. Found {len(existing)} existing wheel file(s)."
             )
-        except Exception as exc:  # noqa: BLE001
+        except (all_errors, OSError, ValueError) as exc:
             QMessageBox.critical(self, "Connection failed", str(exc))
             self.log(f"Connection failed: {exc}")
 
@@ -164,6 +165,6 @@ class MainWindow(QMainWindow):
                 self.log(f"Updated {len(grouped)} package index file(s)")
 
             QMessageBox.information(self, "Done", "Publish completed successfully.")
-        except Exception as exc:  # noqa: BLE001
+        except (all_errors, OSError, ValueError) as exc:
             QMessageBox.critical(self, "Publish failed", str(exc))
             self.log(f"Publish failed: {exc}")

@@ -19,14 +19,14 @@ The result is a static directory/file structure that can be served over HTTP(S).
 
 - Python
 - PySide6 for the desktop UI
-- `QSettings` (PySide6 settings module) for storing host, username, password, and remote root
+- `QSettings` (PySide6 settings module) for storing host, username, and remote root
 
 ## Current implementation
 
 The app provides:
 
 - FTP host/username/password/remote-root configuration
-- persistent settings storage through `QSettings`
+- persistent settings storage through `QSettings` (password is not persisted)
 - wheel file selection (`*.whl`)
 - test connection action
 - publish action that:
