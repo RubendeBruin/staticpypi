@@ -9,12 +9,17 @@ description = "Maintain a PyPI-compatible static index over FTP"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-  "pyside6-essentials>=6.6",
+  "bcrypt>=4.0",
 ]
 
+[project.optional-dependencies]
+gui = ["pyside6-essentials>=6.6"]
+
+[dependency-groups]
+dev = ["pytest>=8", "pyftpdlib>=2.0"]
+
 [project.scripts]
-staticpypi = "staticpypi.main:main"
-staticpypi-cli = "staticpypi.cli:main"
+staticpypi = "staticpypi.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]

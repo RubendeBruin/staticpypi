@@ -6,6 +6,23 @@ from pathlib import Path
 from types import TracebackType
 
 
+def split_host_port(host: str, default_port: int = 21) -> tuple[str, int]:
+    """Split 'host', 'host:port', '[ipv6]' or '[ipv6]:port'. A bare IPv6 address (several colons) has no port."""
+    host = host.strip()
+    if host.startswith("["):
+        name, _, rest = host[1:].partition("]")
+        port_text = rest.lstrip(":")
+    elif host.count(":") == 1:
+        name, _, port_text = host.partition(":")
+    else:
+        return host, default_port
+    if not port_text:
+        return name, default_port
+    if not port_text.isdigit() or not 0 < int(port_text) < 65536:
+        raise ValueError(f"Invalid FTP port in host {host!r}")
+    return name, int(port_text)
+
+
 class FTPRepository:
     DEFAULT_TIMEOUT_SECONDS = 30
 
@@ -23,6 +40,7 @@ class FTPRepository:
         self.remote_root = remote_root or "/"
         self.timeout_seconds = timeout_seconds
         self._ftp: FTP | None = None
+        self._root = "/"
 
     def __enter__(self) -> "FTPRepository":
         self.connect()
@@ -37,10 +55,13 @@ class FTPRepository:
         self.close()
 
     def connect(self) -> None:
-        ftp = FTP(self.host, timeout=self.timeout_seconds)
+        host, port = split_host_port(self.host)
+        ftp = FTP()
+        ftp.connect(host, port, timeout=self.timeout_seconds)
         ftp.login(self.username, self.password)
         self._ftp = ftp
         self._chdir(self.remote_root)
+        self._root = ftp.pwd()
 
     def close(self) -> None:
         if self._ftp is None:
@@ -69,7 +90,7 @@ class FTPRepository:
         current = ftp.pwd()
         parts = normalized.split("/")
         try:
-            ftp.cwd("/")
+            ftp.cwd(self._root)  # paths are relative to the remote root, not the FTP root
             for part in parts:
                 try:
                     ftp.mkd(part)
@@ -107,6 +128,26 @@ class FTPRepository:
             ftp.delete(filename)
         finally:
             ftp.cwd(current)
+
+    def download_text(self, remote_path: str) -> str | None:
+        """Return the file's content, or None if it does not exist."""
+        ftp = self._require_connection()
+        parts = remote_path.strip("/").split("/")
+        filename = parts[-1]
+        remote_dir = "/".join(parts[:-1])
+        current = ftp.pwd()
+        buffer = BytesIO()
+        try:
+            if remote_dir:
+                ftp.cwd(remote_dir)
+            ftp.retrbinary(f"RETR {filename}", buffer.write)
+        except error_perm as exc:
+            if str(exc).startswith("550"):
+                return None
+            raise
+        finally:
+            ftp.cwd(current)
+        return buffer.getvalue().decode("utf-8")
 
     def upload_file(self, local_path: Path, remote_path: str) -> None:
         ftp = self._require_connection()

@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from staticpypi.access_dialog import AccessDialog
 from staticpypi.ftp_repository import FTPRepository
 from staticpypi.index_builder import (
     build_package_index,
@@ -103,7 +104,7 @@ class MainWindow(QMainWindow):
         self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
         self.remote_root_input = QLineEdit()
 
-        form_layout.addRow("FTP host", self.host_input)
+        form_layout.addRow("FTP host[:port]", self.host_input)
         form_layout.addRow("Username", self.username_input)
         form_layout.addRow("Password", self.password_input)
         form_layout.addRow("Remote root", self.remote_root_input)
@@ -146,9 +147,13 @@ class MainWindow(QMainWindow):
         self.update_button = QPushButton("Update")
         self.update_button.clicked.connect(self.update_indices)
 
+        self.access_button = QPushButton("Access control…")
+        self.access_button.clicked.connect(self.open_access_control)
+
         actions.addWidget(self.connect_button)
         actions.addWidget(self.publish_button)
         actions.addWidget(self.update_button)
+        actions.addWidget(self.access_button)
         layout.addLayout(actions)
 
         self.log_output = QTextEdit()
@@ -182,6 +187,9 @@ class MainWindow(QMainWindow):
 
     def log(self, message: str) -> None:
         self.log_output.append(message)
+
+    def open_access_control(self) -> None:
+        AccessDialog(self, self._read_settings, self._settings).exec()
 
     def _add_wheel_files(self, files: list[Path]) -> None:
         """Add wheel files to the selected files list."""

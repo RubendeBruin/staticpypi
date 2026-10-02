@@ -2,6 +2,8 @@
 
 Apache's `.htaccess` mechanism lets you restrict access to the generated repository without modifying your server's main configuration. The examples below assume the repository root (the directory that contains `index.html` and `packages/`) is served by Apache.
 
+> **Automated alternative:** `staticpypi user add`, `staticpypi protect enable` and `staticpypi protect test` do everything below over FTP and verify the result; see "Access control" in the [README](../README.md). This page describes the manual setup and the Apache background.
+
 ---
 
 ## 1. Basic authentication (username + password)

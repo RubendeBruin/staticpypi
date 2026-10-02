@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from PySide6.QtCore import QSettings
-
 
 @dataclass
 class ConnectionSettings:
@@ -15,6 +13,8 @@ class ConnectionSettings:
 
 class AppSettings:
     def __init__(self) -> None:
+        from PySide6.QtCore import QSettings
+
         self._settings = QSettings("staticpypi", "staticpypi")
 
     def load(self) -> ConnectionSettings:
@@ -24,6 +24,13 @@ class AppSettings:
             password="",
             remote_root=self._settings.value("remote_root", "/", type=str),
         )
+
+    def get(self, key: str) -> str:
+        return self._settings.value(key, "", type=str)
+
+    def set(self, key: str, value: str) -> None:
+        self._settings.setValue(key, value)
+        self._settings.sync()
 
     def save(self, config: ConnectionSettings) -> None:
         self._settings.setValue("host", config.host)
